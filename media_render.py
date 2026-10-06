@@ -25,6 +25,8 @@ class MediaRenderI(Spotifice.MediaRender):
         self.player = player
         self.provider = None
         self.current_track = None
+        self.is_repeating = False
+        self.playback_state = Spotifice.PlaybackState.STOPPED
 
     def ensure_player_stopped(self):
         if self.player.is_playing():
@@ -89,6 +91,11 @@ class MediaRenderI(Spotifice.MediaRender):
     def play(self, current=None):
         assert current, "remote invocation required"
 
+        if self.playback_state == Spotifice.PlaybackState.PAUSED:
+            self.player.resume()
+            self.playback_state = Spotifice.PlaybackState.PLAYING
+            return
+        
         self.ensure_provider_bound()
 
         if not self.current_track:
@@ -105,6 +112,10 @@ class MediaRenderI(Spotifice.MediaRender):
         self.player.play(self.chunk_reader(current.id))
         if not self.player.confirm_play_starts():
             raise Spotifice.PlayerError(reason="Failed to confirm playback")
+
+    def on_track_exhaust(self):
+        if self.is_repeating:
+            self.play()
 
     def chunk_reader(self, render_id):
         provider = self.provider
@@ -127,6 +138,25 @@ class MediaRenderI(Spotifice.MediaRender):
             raise Spotifice.PlayerError(reason="Failed to confirm stop")
 
         logger.info("Stopped")
+
+    def get_status(self, current=None):
+        return Spotifice.PlaybackStatus(
+            state=self.playback_state,
+            current_track=self.current_track,
+            is_repeating=self.is_repeating
+        )
+
+    def set_repeat(self, enabled, current=None):
+        self.is_repeating = enabled
+
+
+    def pause(self, current=None):
+        if self.playback_state == Spotifice.PlaybackState.STOPPED:
+            raise Spotifice.PlayerError(reason='Cannot pause when stopped')
+
+        if self.playback_state == Spotifice.PlaybackState.PLAYING:
+            self.player.pause()
+            self.playback_state = Spotifice.PlaybackState.PAUSED
 
 
 def shutdown_on_interrupt(ic):

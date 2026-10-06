@@ -48,11 +48,13 @@ def main(ic):
     print("Loading track into MediaRender...")
     render.load_track(tracks[0].id)
     render.play()
-    sleep(5)  # Let it play for 5 seconds
+    sleep(3)  # Let it play for 3 seconds
 
-    render.stop()
-    render.load_track(tracks[1].id)
-    render.play()
+    print(render.get_status())
+    render.pause()
+
+    print(render.get_status())
+    sleep(3)
 
     # track 1 continues playing...
 
